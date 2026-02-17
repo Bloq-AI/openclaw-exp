@@ -3,6 +3,15 @@ import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? "" });
 
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
 interface GitHubRepo {
   name: string;
   html_url: string;
@@ -59,10 +68,14 @@ export async function executeScanGithub(
       )
       .join("\n");
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: `You are a developer advocate for BLOQ AI. Given these GitHub repos, pick the ONE most interesting for a LinkedIn post and explain why.\n\nRepos:\n${repoList}\n\nRespond in JSON:\n{"picked_index": number, "reason": string, "angle": string}\nwhere angle is the content angle/hook for the post.`,
-    });
+    const response = await withTimeout(
+      ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: `You are a developer advocate for BLOQ AI. Given these GitHub repos, pick the ONE most interesting for a LinkedIn post and explain why.\n\nRepos:\n${repoList}\n\nRespond in JSON:\n{"picked_index": number, "reason": string, "angle": string}\nwhere angle is the content angle/hook for the post.`,
+      }),
+      60_000,
+      "gemini repo selection"
+    );
 
     const text = response.text ?? "";
     let parsed: { picked_index: number; reason: string; angle: string };

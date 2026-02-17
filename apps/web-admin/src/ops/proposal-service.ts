@@ -124,7 +124,8 @@ export async function createProposalAndMaybeAutoApprove(
     payload: input.payload ?? {},
   }));
 
-  await sb.from("ops_mission_steps").insert(steps);
+  const { error: stepsError } = await sb.from("ops_mission_steps").insert(steps);
+  if (stepsError) throw new Error(`Failed to create mission steps: ${stepsError.message}`);
 
   await emitEvent(sb, "mission:created", ["mission", "created"], {
     proposal_id: proposalId,
