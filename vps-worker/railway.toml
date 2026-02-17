@@ -1,0 +1,6 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "node --import tsx/esm src/worker.ts"
+restartPolicyType = "always"
