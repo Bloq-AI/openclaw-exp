@@ -2,5 +2,5 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "node --import tsx/esm src/worker.ts"
+startCommand = "npx tsx src/worker.ts"
 restartPolicyType = "always"
