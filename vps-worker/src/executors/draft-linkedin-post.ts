@@ -33,10 +33,12 @@ export async function executeDraftLinkedinPost(
     const content = (textResponse.text ?? "").trim();
 
     // ── Generate image ──
-    let imageBase64: string | null = null;
+    let imageUrl: string | null = null;
+
+    // Try Gemini image generation first
     try {
       const imageResponse = await ai.models.generateContent({
-        model: "gemini-2.0-flash-exp",
+        model: "gemini-2.5-flash-image",
         contents: `Generate a modern, professional social media graphic for a LinkedIn post about an open-source AI project called "${repo.name}". The image should feel tech-forward, use dark tones with accent colors, and subtly reference code or AI. Do NOT include any text in the image.`,
         config: {
           responseModalities: ["TEXT", "IMAGE"],
@@ -46,16 +48,37 @@ export async function executeDraftLinkedinPost(
       const parts = imageResponse.candidates?.[0]?.content?.parts ?? [];
       for (const part of parts) {
         if (part.inlineData?.mimeType?.startsWith("image/")) {
-          imageBase64 = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+          imageUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
           break;
         }
       }
-    } catch (imgErr) {
-      // Image generation is non-critical; continue with text only
+    } catch (geminiImgErr) {
       console.warn(
-        "[draft_linkedin_post] image generation failed:",
-        imgErr instanceof Error ? imgErr.message : imgErr
+        "[draft_linkedin_post] Gemini image generation failed, falling back to Pollinations:",
+        geminiImgErr instanceof Error ? geminiImgErr.message : geminiImgErr
       );
+    }
+
+    // Fallback: Pollinations.ai (free, no auth)
+    if (!imageUrl) {
+      try {
+        const prompt = encodeURIComponent(
+          `Modern professional social media graphic, dark tech aesthetic with accent colors, abstract AI and code visualization, for an open-source project called ${repo.name}, no text in image`
+        );
+        const pollinationsUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1200&height=630&nologo=true`;
+
+        // Fetch to verify the URL resolves, then store the URL directly
+        const imgRes = await fetch(pollinationsUrl, { method: "HEAD" });
+        if (imgRes.ok) {
+          imageUrl = pollinationsUrl;
+          console.log("[draft_linkedin_post] image generated via Pollinations.ai");
+        }
+      } catch (pollErr) {
+        console.warn(
+          "[draft_linkedin_post] Pollinations fallback also failed:",
+          pollErr instanceof Error ? pollErr.message : pollErr
+        );
+      }
     }
 
     // ── Insert into ops_content_drafts ──
@@ -66,7 +89,7 @@ export async function executeDraftLinkedinPost(
       .insert({
         platform: "linkedin",
         content,
-        image_url: imageBase64,
+        image_url: imageUrl,
         context: { repo, reason, angle },
         status: "pending",
         mission_id: missionId ?? null,
@@ -83,7 +106,7 @@ export async function executeDraftLinkedinPost(
       output: {
         draft_id: draft.id,
         content,
-        image_generated: !!imageBase64,
+        image_generated: !!imageUrl,
       },
     };
   } catch (err: unknown) {

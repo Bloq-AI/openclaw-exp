@@ -115,11 +115,12 @@ export async function createProposalAndMaybeAutoApprove(
 
   const missionId = mission!.id;
 
-  // Create one step per kind
-  const steps = input.step_kinds.map((kind) => ({
+  // Create one step per kind — first step is queued, rest are pending
+  // (pending steps get promoted to queued via step output chaining in the worker)
+  const steps = input.step_kinds.map((kind, i) => ({
     mission_id: missionId,
     kind,
-    status: "queued" as const,
+    status: (i === 0 ? "queued" : "pending") as string,
     payload: input.payload ?? {},
   }));
 

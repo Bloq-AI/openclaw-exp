@@ -66,22 +66,23 @@ async function processStep(step: {
         output: result.output,
       });
 
-      // ── Step output chaining: merge output into next queued step's payload ──
-      if (result.output && typeof result.output === "object") {
+      // ── Step output chaining: promote next pending step to queued with merged payload ──
+      {
         const { data: nextSteps } = await sb
           .from("ops_mission_steps")
           .select("id, payload")
           .eq("mission_id", step.mission_id)
-          .eq("status", "queued")
+          .in("status", ["pending", "queued"])
           .order("created_at", { ascending: true })
           .limit(1);
 
         if (nextSteps && nextSteps.length > 0) {
           const next = nextSteps[0];
-          const merged = { ...result.output, ...next.payload, mission_id: step.mission_id };
+          const outputData = result.output && typeof result.output === "object" ? result.output : {};
+          const merged = { ...outputData, ...next.payload, mission_id: step.mission_id };
           await sb
             .from("ops_mission_steps")
-            .update({ payload: merged })
+            .update({ payload: merged, status: "queued" })
             .eq("id", next.id);
         }
       }

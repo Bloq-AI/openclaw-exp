@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { getSupabaseBrowser } from "@/lib/supabaseBrowser";
-import * as s from "../styles";
 
 interface Stats {
   activeMissions: number;
@@ -53,42 +52,49 @@ export function StageHeader() {
     return () => clearInterval(interval);
   }, []);
 
-  const pulse = stats.lastHeartbeat
-    && (Date.now() - new Date(stats.lastHeartbeat).getTime()) < 5 * 60_000;
+  const isLive =
+    !!stats.lastHeartbeat &&
+    Date.now() - new Date(stats.lastHeartbeat).getTime() < 5 * 60_000;
 
   return (
-    <header style={s.header}>
-      <div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{
-            width: 10, height: 10, borderRadius: "50%",
-            background: pulse ? s.colors.green : s.colors.red,
-            boxShadow: pulse ? `0 0 8px ${s.colors.green}` : "none",
-          }} />
-          <h1 style={s.headerTitle}>OpenClaw Stage</h1>
+    <header className="stage-header">
+      <div className="header-brand">
+        <div className={`header-pulse ${isLive ? "live" : "dead"}`} />
+        <div>
+          <h1 className="header-title">OpenClaw Ops</h1>
+          <p className="header-sub">
+            {isLive ? "systems nominal" : "awaiting heartbeat"} /{" "}
+            {new Date().toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })}
+          </p>
         </div>
-        <p style={s.headerSub}>Multi-Agent Operations Dashboard</p>
       </div>
-      <div style={s.statsRow}>
-        <div style={s.statBox}>
-          <div style={s.statValue(s.colors.green)}>{stats.activeMissions}</div>
-          <div style={s.statLabel}>Missions</div>
+
+      <div className="header-stats">
+        <div className="stat">
+          <div className="stat-value green">{stats.activeMissions}</div>
+          <div className="stat-label">Active</div>
         </div>
-        <div style={s.statBox}>
-          <div style={s.statValue(s.colors.accent)}>{stats.agentMemories}</div>
-          <div style={s.statLabel}>Memories</div>
+        <div className="stat">
+          <div className="stat-value purple">{stats.agentMemories}</div>
+          <div className="stat-label">Memories</div>
         </div>
-        <div style={s.statBox}>
-          <div style={s.statValue(s.colors.blue)}>{stats.totalEvents}</div>
-          <div style={s.statLabel}>Events</div>
+        <div className="stat">
+          <div className="stat-value blue">{stats.totalEvents}</div>
+          <div className="stat-label">Events</div>
         </div>
-        <div style={s.statBox}>
-          <div style={{ fontSize: 12, color: s.colors.textMuted }}>
+        <div className="stat">
+          <div className="stat-heartbeat">
             {stats.lastHeartbeat
-              ? new Date(stats.lastHeartbeat).toLocaleTimeString()
+              ? new Date(stats.lastHeartbeat).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
               : "---"}
           </div>
-          <div style={s.statLabel}>Last Beat</div>
+          <div className="stat-label">Last Beat</div>
         </div>
       </div>
     </header>

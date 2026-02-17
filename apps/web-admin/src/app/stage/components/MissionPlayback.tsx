@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { getSupabaseBrowser } from "@/lib/supabaseBrowser";
-import * as s from "../styles";
 
 interface Step {
   id: string;
@@ -20,7 +19,7 @@ interface Mission {
   finalized_at: string | null;
 }
 
-const STATUS_ICONS: Record<string, string> = {
+const STATUS_ICON: Record<string, string> = {
   queued: "\u25CB",
   running: "\u25D4",
   succeeded: "\u2713",
@@ -61,77 +60,86 @@ export function MissionPlayback() {
 
   if (!mission) {
     return (
-      <div style={s.card}>
-        <div style={s.cardHeader}>
-          <h2 style={s.cardTitle}>Mission Playback</h2>
+      <div className="card">
+        <div className="card-header">
+          <h2 className="card-title">
+            <span className="card-title-icon">&#x25C6;</span>
+            Latest Mission
+          </h2>
         </div>
-        <div style={s.empty}>No missions to replay</div>
+        <div className="card-empty">No missions to replay</div>
       </div>
     );
   }
 
   return (
-    <div style={s.card}>
-      <div style={s.cardHeader}>
-        <h2 style={s.cardTitle}>Mission Playback</h2>
-        <span style={s.statusPill(mission.status)}>{mission.status}</span>
+    <div className="card">
+      <div className="card-header">
+        <h2 className="card-title">
+          <span className="card-title-icon">&#x25C6;</span>
+          Latest Mission
+        </h2>
+        <span className={`pill pill-${mission.status}`}>{mission.status}</span>
       </div>
-      <div style={{ padding: "10px 18px", borderBottom: `1px solid ${s.colors.border}` }}>
-        <span style={s.missionId}>{mission.id.slice(0, 8)}</span>
-        <span style={{ ...s.missionDate, marginLeft: 10 }}>
-          {new Date(mission.created_at).toLocaleString()}
+      <div className="playback-meta">
+        <span className="mission-id mono">{mission.id.slice(0, 8)}</span>
+        <span className="mission-date">
+          {new Date(mission.created_at).toLocaleString([], {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
         </span>
       </div>
-      <div style={{ padding: "16px 18px" }}>
-        {steps.map((step, i) => (
-          <div key={step.id} style={s.timelineItem}>
-            {i < steps.length - 1 && <div style={s.timelineLine} />}
-            <div style={s.timelineDot(step.status)}>
-              {STATUS_ICONS[step.status] ?? "\u25CB"}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 13, fontWeight: 500, color: s.colors.text }}>
-                  {step.kind}
-                </span>
-                <span style={{ fontSize: 11, color: s.colors.textMuted }}>
-                  {new Date(step.created_at).toLocaleTimeString()}
-                </span>
+      <div className="playback-body">
+        {steps.length === 0 ? (
+          <div className="card-empty">No steps</div>
+        ) : (
+          steps.map((step) => (
+            <div key={step.id} className="timeline-item">
+              <div className="timeline-line" />
+              <div className={`timeline-dot ${step.status}`}>
+                {STATUS_ICON[step.status] ?? "\u25CB"}
               </div>
-              {step.last_error && (
-                <div style={{ fontSize: 12, color: s.colors.red, marginTop: 4 }}>
-                  {step.last_error}
+              <div className="timeline-content">
+                <div className="timeline-top">
+                  <span className="timeline-kind">{step.kind}</span>
+                  <span className="timeline-time">
+                    {new Date(step.created_at).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                    })}
+                  </span>
                 </div>
-              )}
-              {step.status === "succeeded" && step.output && (
-                <div>
-                  <button
-                    onClick={() => setOpenOutput(openOutput === step.id ? null : step.id)}
-                    style={{
-                      fontSize: 11,
-                      color: s.colors.textMuted,
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      padding: 0,
-                      marginTop: 4,
-                      textDecoration: "underline",
-                    }}
-                  >
-                    {openOutput === step.id ? "Hide output" : "View output"}
-                  </button>
-                  {openOutput === step.id && (
-                    <div style={s.outputBox}>
-                      {JSON.stringify(step.output, null, 2)}
-                    </div>
-                  )}
-                </div>
-              )}
+                {step.last_error && (
+                  <div className="timeline-error">{step.last_error}</div>
+                )}
+                {step.status === "succeeded" && step.output && (
+                  <div>
+                    <button
+                      className="output-toggle"
+                      onClick={() =>
+                        setOpenOutput(
+                          openOutput === step.id ? null : step.id
+                        )
+                      }
+                    >
+                      {openOutput === step.id
+                        ? "\u25BE hide output"
+                        : "\u25B8 view output"}
+                    </button>
+                    {openOutput === step.id && (
+                      <div className="output-box">
+                        {JSON.stringify(step.output, null, 2)}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-        {steps.length === 0 && (
-          <div style={s.empty}>No steps</div>
+          ))
         )}
       </div>
     </div>

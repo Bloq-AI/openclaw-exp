@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { getSupabaseBrowser } from "@/lib/supabaseBrowser";
-import * as s from "../styles";
 
 interface Turn {
   agent_id: string;
@@ -20,8 +19,19 @@ interface Session {
   created_at: string;
 }
 
+const AGENT_INITIALS: Record<string, string> = {
+  strategist: "ST",
+  hype: "HY",
+  critic: "CR",
+  builder: "BU",
+  creative: "RE",
+  analyst: "AN",
+};
+
 export function OfficeRoom() {
-  const [session, setSession] = useState<Session | null | undefined>(undefined);
+  const [session, setSession] = useState<Session | null | undefined>(
+    undefined
+  );
 
   useEffect(() => {
     const sb = getSupabaseBrowser();
@@ -43,56 +53,72 @@ export function OfficeRoom() {
 
   if (session === undefined) {
     return (
-      <div style={s.card}>
-        <div style={s.cardHeader}>
-          <h2 style={s.cardTitle}>Office Room</h2>
+      <div className="card office-room">
+        <div className="card-header">
+          <h2 className="card-title">
+            <span className="card-title-icon">&#x25CB;</span>
+            Office Room
+          </h2>
         </div>
-        <div style={s.empty}>Loading...</div>
+        <div className="card-empty">Loading...</div>
       </div>
     );
   }
 
   if (!session) {
     return (
-      <div style={s.card}>
-        <div style={s.cardHeader}>
-          <h2 style={s.cardTitle}>Office Room</h2>
+      <div className="card office-room">
+        <div className="card-header">
+          <h2 className="card-title">
+            <span className="card-title-icon">&#x25CB;</span>
+            Office Room
+          </h2>
         </div>
-        <div style={s.empty}>
-          No conversations yet. Roundtable sessions appear here when agents chat.
+        <div className="card-empty">
+          No conversations yet.
+          <br />
+          Roundtable sessions appear here.
         </div>
       </div>
     );
   }
 
   return (
-    <div style={s.card}>
-      <div style={s.cardHeader}>
-        <h2 style={s.cardTitle}>Office Room</h2>
-        <span style={s.formatBadge(session.format)}>{session.format}</span>
+    <div className="card office-room">
+      <div className="card-header">
+        <h2 className="card-title">
+          <span className="card-title-icon">&#x25CB;</span>
+          Office Room
+        </h2>
+        <span className={`format-badge format-${session.format}`}>
+          {session.format}
+        </span>
       </div>
-      <div style={{ padding: "10px 18px", borderBottom: `1px solid ${s.colors.border}` }}>
-        <div style={s.topicPill}>{session.topic}</div>
-        <div style={{ display: "flex", gap: 4, marginTop: 8 }}>
+      <div className="office-meta">
+        <div className="office-topic">{session.topic}</div>
+        <div className="office-participants">
           {session.participants.map((p) => (
-            <span key={p} style={s.participantChip}>{p}</span>
+            <span key={p} className="participant-chip">
+              {p}
+            </span>
           ))}
         </div>
       </div>
-      <div style={{ ...s.cardBody, padding: 14, height: 380 }}>
+      <div className="card-body" style={{ padding: 12 }}>
         {session.turns.length === 0 ? (
-          <div style={s.empty}>Waiting for first turn...</div>
+          <div className="card-empty">Waiting for first turn...</div>
         ) : (
           session.turns.map((turn, i) => (
-            <div key={i} style={s.chatBubble(turn.agent_id)}>
-              <div style={s.avatar(turn.agent_id)}>
-                {s.AGENT_INITIALS[turn.agent_id] ?? "??"}
+            <div
+              key={i}
+              className={`chat-bubble agent-${turn.agent_id}`}
+            >
+              <div className={`avatar avatar-${turn.agent_id}`}>
+                {AGENT_INITIALS[turn.agent_id] ?? "??"}
               </div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ ...s.chatName, color: s.colors.textMuted }}>
-                  {turn.agent_id}
-                </div>
-                <div style={s.chatText}>{turn.message}</div>
+                <div className="chat-name">{turn.agent_id}</div>
+                <div className="chat-text">{turn.message}</div>
               </div>
             </div>
           ))

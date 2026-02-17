@@ -1,7 +1,5 @@
 "use client";
 
-import * as s from "../styles";
-
 export function ErrorFallback({
   error,
   resetErrorBoundary,
@@ -10,11 +8,11 @@ export function ErrorFallback({
   resetErrorBoundary: () => void;
 }) {
   return (
-    <div style={s.errorBox}>
-      <div style={s.errorTitle}>Something went wrong</div>
-      <div style={s.errorMsg}>{error.message}</div>
-      <button onClick={resetErrorBoundary} style={s.retryBtn}>
-        Retry
+    <div className="error-box">
+      <div className="error-title">Something went wrong</div>
+      <div className="error-msg">{error.message}</div>
+      <button onClick={resetErrorBoundary} className="error-retry">
+        retry
       </button>
     </div>
   );

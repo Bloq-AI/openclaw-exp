@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getSupabaseBrowser } from "@/lib/supabaseBrowser";
-import * as s from "../styles";
 
 interface EventRow {
   id: string;
@@ -11,6 +10,35 @@ interface EventRow {
   actor: string;
   created_at: string;
 }
+
+const DOT_COLOR: Record<string, string> = {
+  "step:succeeded": "green",
+  "step:failed": "red",
+  "mission:created": "purple",
+  "mission:succeeded": "green",
+  "mission:failed": "red",
+  "proposal:created": "amber",
+  "proposal:rejected": "red",
+  "roundtable:started": "cyan",
+  "roundtable:completed": "green",
+  "roundtable:failed": "red",
+  "initiative:proposed": "orange",
+  "actionitem:created": "pink",
+};
+
+const TAG_CLASS: Record<string, string> = {
+  mission: "tag-mission",
+  step: "tag-step",
+  proposal: "tag-proposal",
+  roundtable: "tag-roundtable",
+  initiative: "tag-initiative",
+  actionitem: "tag-actionitem",
+  failed: "tag-failed",
+  succeeded: "tag-succeeded",
+  created: "tag-created",
+  started: "tag-started",
+  completed: "tag-completed",
+};
 
 export function SignalFeed() {
   const [events, setEvents] = useState<EventRow[]>([]);
@@ -34,37 +62,51 @@ export function SignalFeed() {
   }, [fetchEvents]);
 
   return (
-    <div style={s.card}>
-      <div style={s.cardHeader}>
-        <h2 style={s.cardTitle}>Signal Feed</h2>
-        <span style={s.cardCount}>{events.length}</span>
+    <div className="card signal-feed">
+      <div className="card-header">
+        <h2 className="card-title">
+          <span className="card-title-icon">&#x25C8;</span>
+          Signal Feed
+        </h2>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="live-dot" />
+          <span className="card-badge">{events.length}</span>
+        </div>
       </div>
-      <div ref={listRef} style={{ ...s.cardBody, height: 480 }}>
+      <div ref={listRef} className="card-body">
         {events.length === 0 ? (
-          <div style={s.empty}>No events yet. Fire a heartbeat to get started.</div>
+          <div className="card-empty">
+            No signals yet.
+            <br />
+            Fire a heartbeat to initialize.
+          </div>
         ) : (
           events.map((event) => {
-            const dotColor = s.EVENT_DOT_COLORS[event.type] ?? s.colors.textMuted;
+            const dotClass = DOT_COLOR[event.type] ?? "muted";
             return (
-              <div key={event.id} style={s.eventRow}>
-                <div style={s.eventDot(dotColor)} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={s.eventType}>{event.type}</span>
-                    <span style={s.eventTime}>
-                      {new Date(event.created_at).toLocaleTimeString()}
+              <div key={event.id} className="event-row">
+                <div className={`event-dot ${dotClass}`} />
+                <div className="event-content">
+                  <div className="event-top">
+                    <span className="event-type">{event.type}</span>
+                    <span className="event-time">
+                      {new Date(event.created_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                      })}
                     </span>
                   </div>
-                  <div style={s.tagRow}>
-                    {event.tags.map((t) => {
-                      const ts = s.TAG_STYLES[t] ?? { bg: "rgba(255,255,255,0.05)", fg: s.colors.textMuted };
-                      return (
-                        <span key={t} style={s.tag(ts.bg, ts.fg)}>{t}</span>
-                      );
-                    })}
-                    <span style={{ ...s.tag("transparent", s.colors.textMuted), marginLeft: "auto" }}>
-                      {event.actor}
-                    </span>
+                  <div className="event-tags">
+                    {event.tags.map((t) => (
+                      <span
+                        key={t}
+                        className={`tag ${TAG_CLASS[t] ?? ""}`}
+                      >
+                        {t}
+                      </span>
+                    ))}
+                    <span className="event-actor">{event.actor}</span>
                   </div>
                 </div>
               </div>

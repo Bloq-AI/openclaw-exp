@@ -39,7 +39,7 @@ export async function maybeFinalizeMission(missionId: string) {
   if (!steps || steps.length === 0) return;
 
   const statuses = steps.map((s) => s.status);
-  if (statuses.includes("queued") || statuses.includes("running")) return;
+  if (statuses.includes("pending") || statuses.includes("queued") || statuses.includes("running")) return;
 
   const hasFailed = statuses.includes("failed");
   const finalStatus = hasFailed ? "failed" : "succeeded";
