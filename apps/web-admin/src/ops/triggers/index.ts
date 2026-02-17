@@ -1,42 +1,9 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createProposalAndMaybeAutoApprove } from "../proposal-service";
-
-interface TriggerResult {
-  fired: boolean;
-  proposalTemplate?: {
-    title: string;
-    summary?: string;
-    step_kinds: string[];
-    payload?: Record<string, unknown>;
-  };
-  cooldownKey: string;
-  cooldownMinutes: number;
-}
-
-type TriggerFn = (sb: SupabaseClient) => Promise<TriggerResult>;
+import { checkerMap } from "./checkers";
 
 /**
- * Registered triggers — add new triggers to this array.
- * Each trigger is evaluated on every heartbeat.
- */
-const triggers: { name: string; fn: TriggerFn }[] = [
-  // Example (disabled — uncomment and customize):
-  // {
-  //   name: "daily_content_generation",
-  //   fn: async (sb) => ({
-  //     fired: true,
-  //     proposalTemplate: {
-  //       title: "Daily content generation",
-  //       step_kinds: ["analyze", "write_content"],
-  //     },
-  //     cooldownKey: "daily_content",
-  //     cooldownMinutes: 60 * 24,
-  //   }),
-  // },
-];
-
-/**
- * Evaluate all triggers, respecting cooldowns.
+ * Evaluate all enabled trigger rules from ops_trigger_rules.
  * Returns the number of proposals created.
  */
 export async function evaluateTriggers(
@@ -46,41 +13,76 @@ export async function evaluateTriggers(
   const deadline = Date.now() + budgetMs;
   let count = 0;
 
-  for (const trigger of triggers) {
+  // Load enabled rules from DB
+  const { data: rules, error } = await sb
+    .from("ops_trigger_rules")
+    .select("*")
+    .eq("enabled", true)
+    .order("created_at", { ascending: true });
+
+  if (error || !rules) return 0;
+
+  for (const rule of rules) {
     if (Date.now() >= deadline) break;
 
-    const result = await trigger.fn(sb);
-    if (!result.fired || !result.proposalTemplate) continue;
+    // Look up checker function
+    const checker = checkerMap[rule.trigger_event];
+    if (!checker) continue;
 
-    // Check cooldown
-    const cooldownKey = `cooldown:${result.cooldownKey}`;
-    const { data: cooldown } = await sb
-      .from("ops_policy")
-      .select("json")
-      .eq("key", cooldownKey)
-      .single();
-
-    if (cooldown?.json?.until) {
-      const until = new Date(cooldown.json.until);
-      if (until > new Date()) continue; // still in cooldown
+    // Check cooldown (using last_fired_at + cooldown_minutes + jitter)
+    if (rule.last_fired_at) {
+      const jitter = rule.jitter_minutes > 0
+        ? Math.random() * rule.jitter_minutes * 60_000
+        : 0;
+      const cooldownUntil =
+        new Date(rule.last_fired_at).getTime() +
+        rule.cooldown_minutes * 60_000 +
+        jitter;
+      if (Date.now() < cooldownUntil) continue;
     }
 
-    // Fire the trigger
+    // For proactive rules, apply skip probability
+    if (rule.skip_probability > 0 && Math.random() < rule.skip_probability) {
+      continue;
+    }
+
+    // Run checker
+    const result = await checker(sb, rule.conditions ?? {});
+    if (!result.fired) continue;
+
+    // Build proposal from action_config
+    const config = rule.action_config as {
+      title: string;
+      summary?: string;
+      step_kinds: string[];
+      payload?: Record<string, unknown>;
+    };
+
+    if (!config.title || !config.step_kinds) continue;
+
+    // Merge checker payload with config payload
+    const mergedPayload = {
+      ...(config.payload ?? {}),
+      ...(result.payload ?? {}),
+      trigger_rule: rule.name,
+    };
+
     await createProposalAndMaybeAutoApprove(sb, {
       source: "trigger",
-      ...result.proposalTemplate,
+      title: config.title,
+      summary: config.summary,
+      step_kinds: config.step_kinds,
+      payload: mergedPayload,
     });
 
-    // Set cooldown
-    const cooldownUntil = new Date(
-      Date.now() + result.cooldownMinutes * 60_000
-    ).toISOString();
-
-    await sb.from("ops_policy").upsert({
-      key: cooldownKey,
-      json: { until: cooldownUntil },
-      updated_at: new Date().toISOString(),
-    });
+    // Update fire_count and last_fired_at
+    await sb
+      .from("ops_trigger_rules")
+      .update({
+        fire_count: (rule.fire_count ?? 0) + 1,
+        last_fired_at: new Date().toISOString(),
+      })
+      .eq("id", rule.id);
 
     count++;
   }

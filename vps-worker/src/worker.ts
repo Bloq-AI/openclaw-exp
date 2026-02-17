@@ -1,5 +1,7 @@
 import { sb, WORKER_ID, emitEvent, maybeFinalizeMission } from "./lib/supabase";
 import { executors } from "./executors";
+import { pollAndProcessRoundtable } from "./roundtable";
+import { pollAndProcessInitiative } from "./initiatives/process";
 
 const MIN_SLEEP = 5_000;
 const MAX_SLEEP = 15_000;
@@ -99,7 +101,14 @@ async function main() {
     const step = await claimStep();
 
     if (!step) {
-      await jitterSleep();
+      // No steps to process — try roundtable, then initiatives
+      const didRoundtable = await pollAndProcessRoundtable();
+      if (!didRoundtable) {
+        const didInitiative = await pollAndProcessInitiative();
+        if (!didInitiative) {
+          await jitterSleep();
+        }
+      }
       continue;
     }
 
