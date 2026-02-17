@@ -1144,3 +1144,73 @@
   background: rgba(74, 222, 128, 0.2);
   color: var(--green);
 }
+
+.draft-btn-linkedin {
+  background: rgba(10, 102, 194, 0.15);
+  border-color: rgba(10, 102, 194, 0.3);
+  color: #60a4f4;
+}
+
+.draft-btn-linkedin:hover:not(:disabled) {
+  background: rgba(10, 102, 194, 0.25);
+  color: #93c5fd;
+}
+
+.draft-btn-linkedin:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.draft-post-error {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--red);
+  margin-bottom: 6px;
+  opacity: 0.85;
+}
+
+/* LinkedIn connection badge in card header */
+.draft-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.li-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: all 0.15s;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.li-status-on {
+  background: rgba(10, 102, 194, 0.15);
+  border: 1px solid rgba(10, 102, 194, 0.3);
+  color: #60a4f4;
+}
+
+.li-status-off {
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.li-status-off:hover {
+  border-color: rgba(10, 102, 194, 0.4);
+  color: #60a4f4;
+}
+
+.li-icon {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-style: italic;
+  font-size: 10px;
+}

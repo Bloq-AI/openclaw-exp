@@ -11,6 +11,13 @@ interface Draft {
   context: Record<string, unknown>;
   status: string;
   created_at: string;
+  posted_at: string | null;
+}
+
+interface LinkedInStatus {
+  connected: boolean;
+  name: string | null;
+  expired: boolean;
 }
 
 export function ContentDrafts() {
@@ -19,6 +26,9 @@ export function ContentDrafts() {
   const [editing, setEditing] = useState<string | null>(null);
   const [editContent, setEditContent] = useState<Record<string, string>>({});
   const [imgError, setImgError] = useState<Record<string, boolean>>({});
+  const [posting, setPosting] = useState<string | null>(null);
+  const [postError, setPostError] = useState<Record<string, string>>({});
+  const [liStatus, setLiStatus] = useState<LinkedInStatus | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -26,7 +36,7 @@ export function ContentDrafts() {
     async function load() {
       const { data } = await sb
         .from("ops_content_drafts")
-        .select("id, platform, content, image_url, context, status, created_at")
+        .select("id, platform, content, image_url, context, status, created_at, posted_at")
         .eq("status", "pending")
         .order("created_at", { ascending: false })
         .limit(10);
@@ -37,6 +47,14 @@ export function ContentDrafts() {
     load();
     const interval = setInterval(load, 15_000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Load LinkedIn connection status
+  useEffect(() => {
+    fetch("/api/ops/linkedin/status")
+      .then((r) => r.json())
+      .then((d) => setLiStatus(d as LinkedInStatus))
+      .catch(() => {});
   }, []);
 
   // Auto-resize textarea
@@ -85,6 +103,33 @@ export function ContentDrafts() {
     setEditing(null);
   }
 
+  async function postToLinkedIn(d: Draft) {
+    setPosting(d.id);
+    setPostError((prev) => ({ ...prev, [d.id]: "" }));
+
+    try {
+      const res = await fetch("/api/ops/linkedin/post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draft_id: d.id }),
+      });
+
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+
+      if (!res.ok || !json.ok) {
+        setPostError((prev) => ({ ...prev, [d.id]: json.error ?? "Post failed" }));
+      } else {
+        // Remove from list — it's now posted (status → approved)
+        setDrafts((prev) => (prev ? prev.filter((x) => x.id !== d.id) : prev));
+        if (expanded === d.id) setExpanded(null);
+      }
+    } catch {
+      setPostError((prev) => ({ ...prev, [d.id]: "Network error" }));
+    } finally {
+      setPosting(null);
+    }
+  }
+
   return (
     <div className="card">
       <div className="card-header">
@@ -92,7 +137,23 @@ export function ContentDrafts() {
           <span className="card-title-icon">&#x270D;</span>
           Content Drafts
         </h2>
-        <span className="card-badge">{drafts?.length ?? 0}</span>
+        <div className="draft-header-right">
+          <span className="card-badge">{drafts?.length ?? 0}</span>
+          {liStatus !== null && (
+            <a
+              href={liStatus.connected ? undefined : "/api/auth/linkedin"}
+              className={`li-status ${liStatus.connected ? "li-status-on" : "li-status-off"}`}
+              title={
+                liStatus.connected
+                  ? `LinkedIn: ${liStatus.name ?? "connected"}`
+                  : "Click to connect LinkedIn"
+              }
+            >
+              <span className="li-icon">in</span>
+              {liStatus.connected ? liStatus.name ?? "Connected" : "Connect"}
+            </a>
+          )}
+        </div>
       </div>
       <div className="card-body" style={{ maxHeight: 480 }}>
         {drafts === null ? (
@@ -106,6 +167,7 @@ export function ContentDrafts() {
               | undefined;
             const isExpanded = expanded === d.id;
             const isEditing = editing === d.id;
+            const isPosting = posting === d.id;
             const currentContent = isEditing ? (editContent[d.id] ?? d.content) : d.content;
 
             return (
@@ -170,6 +232,11 @@ export function ContentDrafts() {
                   </div>
                 )}
 
+                {/* Post error */}
+                {postError[d.id] && (
+                  <div className="draft-post-error">{postError[d.id]}</div>
+                )}
+
                 {/* Actions */}
                 <div className="draft-actions">
                   {isEditing ? (
@@ -202,6 +269,15 @@ export function ContentDrafts() {
                         Edit
                       </button>
                     </>
+                  )}
+                  {liStatus?.connected && !isEditing && (
+                    <button
+                      className="draft-btn draft-btn-linkedin"
+                      disabled={isPosting}
+                      onClick={() => postToLinkedIn(d)}
+                    >
+                      {isPosting ? "Posting…" : "Post"}
+                    </button>
                   )}
                   <button
                     className="draft-btn draft-btn-approve"
