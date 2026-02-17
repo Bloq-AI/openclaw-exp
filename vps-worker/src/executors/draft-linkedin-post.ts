@@ -45,14 +45,13 @@ export async function executeDraftLinkedinPost(
 
     const content = (textResponse.text ?? "").trim();
 
-    // ── Generate image ──
+    // ── Generate image via Gemini 2.0 Flash ──
     let imageUrl: string | null = null;
 
-    // Try Gemini image generation first
     try {
       const imageResponse = await withTimeout(
         ai.models.generateContent({
-          model: "gemini-2.5-flash-image",
+          model: "gemini-2.0-flash-preview-image-generation",
           contents: `Generate a modern, professional social media graphic for a LinkedIn post about an open-source AI project called "${repo.name}". The image should feel tech-forward, use dark tones with accent colors, and subtly reference code or AI. Do NOT include any text in the image.`,
           config: {
             responseModalities: ["TEXT", "IMAGE"],
@@ -66,23 +65,15 @@ export async function executeDraftLinkedinPost(
       for (const part of parts) {
         if (part.inlineData?.mimeType?.startsWith("image/")) {
           imageUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+          console.log("[draft_linkedin_post] image generated via Gemini");
           break;
         }
       }
-    } catch (geminiImgErr) {
+    } catch (imgErr) {
       console.warn(
-        "[draft_linkedin_post] Gemini image generation failed, falling back to Pollinations:",
-        geminiImgErr instanceof Error ? geminiImgErr.message : geminiImgErr
+        "[draft_linkedin_post] image generation failed:",
+        imgErr instanceof Error ? imgErr.message : imgErr
       );
-    }
-
-    // Fallback: Pollinations.ai (free, no auth) — URL is deterministic, browser fetches on render
-    if (!imageUrl) {
-      const prompt = encodeURIComponent(
-        `Modern professional social media graphic, dark tech aesthetic with accent colors, abstract AI and code visualization, for an open-source project called ${repo.name}, no text in image`
-      );
-      imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1200&height=630&nologo=true`;
-      console.log("[draft_linkedin_post] image URL set via Pollinations.ai");
     }
 
     // ── Insert into ops_content_drafts ──

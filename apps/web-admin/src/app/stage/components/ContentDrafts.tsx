@@ -148,19 +148,25 @@ export function ContentDrafts() {
                   </div>
                 )}
 
-                {/* Image — full size when expanded, hidden when collapsed */}
-                {isExpanded && d.image_url && !imgError[d.id] && (
+                {/* Image — full size when expanded */}
+                {isExpanded && (
                   <div className="draft-image-wrap">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={d.image_url}
-                      alt="Generated visual"
-                      className="draft-image"
-                      loading="lazy"
-                      onError={() =>
-                        setImgError((prev) => ({ ...prev, [d.id]: true }))
-                      }
-                    />
+                    {d.image_url && !imgError[d.id] ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={d.image_url}
+                        alt="Generated visual"
+                        className="draft-image"
+                        loading="lazy"
+                        onError={() =>
+                          setImgError((prev) => ({ ...prev, [d.id]: true }))
+                        }
+                      />
+                    ) : (
+                      <div className="draft-image-placeholder">
+                        No image generated
+                      </div>
+                    )}
                   </div>
                 )}
 
