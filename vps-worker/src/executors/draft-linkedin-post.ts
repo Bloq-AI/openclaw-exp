@@ -59,26 +59,13 @@ export async function executeDraftLinkedinPost(
       );
     }
 
-    // Fallback: Pollinations.ai (free, no auth)
+    // Fallback: Pollinations.ai (free, no auth) — URL is deterministic, browser fetches on render
     if (!imageUrl) {
-      try {
-        const prompt = encodeURIComponent(
-          `Modern professional social media graphic, dark tech aesthetic with accent colors, abstract AI and code visualization, for an open-source project called ${repo.name}, no text in image`
-        );
-        const pollinationsUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1200&height=630&nologo=true`;
-
-        // Fetch to verify the URL resolves, then store the URL directly
-        const imgRes = await fetch(pollinationsUrl, { method: "HEAD" });
-        if (imgRes.ok) {
-          imageUrl = pollinationsUrl;
-          console.log("[draft_linkedin_post] image generated via Pollinations.ai");
-        }
-      } catch (pollErr) {
-        console.warn(
-          "[draft_linkedin_post] Pollinations fallback also failed:",
-          pollErr instanceof Error ? pollErr.message : pollErr
-        );
-      }
+      const prompt = encodeURIComponent(
+        `Modern professional social media graphic, dark tech aesthetic with accent colors, abstract AI and code visualization, for an open-source project called ${repo.name}, no text in image`
+      );
+      imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1200&height=630&nologo=true`;
+      console.log("[draft_linkedin_post] image URL set via Pollinations.ai");
     }
 
     // ── Insert into ops_content_drafts ──
