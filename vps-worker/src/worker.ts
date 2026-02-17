@@ -5,6 +5,42 @@ import { pollAndProcessInitiative } from "./initiatives/process";
 
 const MIN_SLEEP = 5_000;
 const MAX_SLEEP = 15_000;
+const HEARTBEAT_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+/** Call the control plane heartbeat so triggers evaluate regularly. */
+function startHeartbeatLoop() {
+  const url = process.env.CONTROL_PLANE_URL;
+  const key = process.env.OPS_KEY;
+
+  if (!url || !key) {
+    console.warn(
+      "[worker] CONTROL_PLANE_URL or OPS_KEY not set — heartbeat disabled; set them to enable automatic trigger evaluation"
+    );
+    return;
+  }
+
+  async function tick() {
+    try {
+      const res = await fetch(`${url}/api/ops/heartbeat`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${key}` },
+      });
+      const body = (await res.json()) as Record<string, unknown>;
+      console.log(
+        `[worker] heartbeat ok — triggers=${body.triggers_fired ?? 0} reactions=${body.reactions_processed ?? 0}`
+      );
+    } catch (err) {
+      console.warn(
+        "[worker] heartbeat failed:",
+        err instanceof Error ? err.message : err
+      );
+    }
+  }
+
+  // Fire once on startup, then every HEARTBEAT_INTERVAL
+  tick();
+  setInterval(tick, HEARTBEAT_INTERVAL);
+}
 
 function jitterSleep(): Promise<void> {
   const ms = MIN_SLEEP + Math.random() * (MAX_SLEEP - MIN_SLEEP);
@@ -117,6 +153,7 @@ async function processStep(step: {
 
 async function main() {
   console.log(`[worker] starting as ${WORKER_ID}`);
+  startHeartbeatLoop();
 
   while (true) {
     const step = await claimStep();

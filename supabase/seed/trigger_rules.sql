@@ -51,6 +51,6 @@ INSERT INTO ops_trigger_rules (name, trigger_event, conditions, action_config, c
 
 ('proactive_github_linkedin', 'github_linkedin_scan', '{}',
  '{"title":"GitHub LinkedIn promotion","summary":"Scan bloq-ai GitHub repos and draft a LinkedIn post promoting the most interesting project","step_kinds":["scan_github","draft_linkedin_post"]}'::jsonb,
- 480, 0.3, 60)
+ 1440, 0, 120)
 
 ON CONFLICT (name) DO NOTHING;
