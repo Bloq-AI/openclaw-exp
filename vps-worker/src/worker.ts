@@ -65,6 +65,26 @@ async function processStep(step: {
         mission_id: step.mission_id,
         output: result.output,
       });
+
+      // ── Step output chaining: merge output into next queued step's payload ──
+      if (result.output && typeof result.output === "object") {
+        const { data: nextSteps } = await sb
+          .from("ops_mission_steps")
+          .select("id, payload")
+          .eq("mission_id", step.mission_id)
+          .eq("status", "queued")
+          .order("created_at", { ascending: true })
+          .limit(1);
+
+        if (nextSteps && nextSteps.length > 0) {
+          const next = nextSteps[0];
+          const merged = { ...result.output, ...next.payload, mission_id: step.mission_id };
+          await sb
+            .from("ops_mission_steps")
+            .update({ payload: merged })
+            .eq("id", next.id);
+        }
+      }
     } else {
       await sb
         .from("ops_mission_steps")

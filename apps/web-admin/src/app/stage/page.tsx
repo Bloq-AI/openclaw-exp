@@ -5,65 +5,89 @@ import { ErrorBoundary } from "react-error-boundary";
 import { StageHeader } from "./components/StageHeader";
 import { SignalFeed } from "./components/SignalFeed";
 import { MissionsList } from "./components/MissionsList";
-import { OfficeRoom } from "./components/OfficeRoom";
 import { MissionPlayback } from "./components/MissionPlayback";
+import { OfficeRoom } from "./components/OfficeRoom";
+import { ProposalQueue } from "./components/ProposalQueue";
+import { ContentDrafts } from "./components/ContentDrafts";
+import { AgentMemory } from "./components/AgentMemory";
 import { ErrorFallback } from "./components/ErrorFallback";
 import { CardSkeleton } from "./components/Skeletons";
-import * as s from "./styles";
+import "./dashboard.css";
 
 export default function StagePage() {
   return (
-    <>
-      <style>{`
-        @keyframes shimmer {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
-      `}</style>
-      <div style={s.page}>
-        <div style={s.grid}>
+    <div className="dash">
+      <div className="dash-grid">
+        {/* ── Header ── */}
+        <div className="area-header">
           <ErrorBoundary FallbackComponent={ErrorFallback}>
             <StageHeader />
           </ErrorBoundary>
+        </div>
 
-          {/* Left column: Signal feed */}
-          <div style={s.column}>
-            <ErrorBoundary FallbackComponent={ErrorFallback}>
-              <Suspense fallback={<CardSkeleton />}>
-                <SignalFeed />
-              </Suspense>
-            </ErrorBoundary>
-          </div>
+        {/* ── Signal Feed (left column, spans rows) ── */}
+        <div className="area-feed">
+          <ErrorBoundary FallbackComponent={ErrorFallback}>
+            <Suspense fallback={<CardSkeleton />}>
+              <SignalFeed />
+            </Suspense>
+          </ErrorBoundary>
+        </div>
 
-          {/* Center column: Missions + Playback */}
-          <div style={s.column}>
-            <ErrorBoundary FallbackComponent={ErrorFallback}>
-              <Suspense fallback={<CardSkeleton />}>
-                <MissionsList />
-              </Suspense>
-            </ErrorBoundary>
-            <ErrorBoundary FallbackComponent={ErrorFallback}>
-              <Suspense fallback={<CardSkeleton />}>
-                <MissionPlayback />
-              </Suspense>
-            </ErrorBoundary>
-          </div>
+        {/* ── Missions List ── */}
+        <div className="area-missions">
+          <ErrorBoundary FallbackComponent={ErrorFallback}>
+            <Suspense fallback={<CardSkeleton />}>
+              <MissionsList />
+            </Suspense>
+          </ErrorBoundary>
+        </div>
 
-          {/* Right column: Office Room */}
-          <div style={s.column}>
-            <ErrorBoundary FallbackComponent={ErrorFallback}>
-              <Suspense fallback={<CardSkeleton />}>
-                <OfficeRoom />
-              </Suspense>
-            </ErrorBoundary>
-          </div>
+        {/* ── Mission Playback ── */}
+        <div className="area-playback">
+          <ErrorBoundary FallbackComponent={ErrorFallback}>
+            <Suspense fallback={<CardSkeleton />}>
+              <MissionPlayback />
+            </Suspense>
+          </ErrorBoundary>
+        </div>
+
+        {/* ── Office Room (right column, spans rows) ── */}
+        <div className="area-office">
+          <ErrorBoundary FallbackComponent={ErrorFallback}>
+            <Suspense fallback={<CardSkeleton />}>
+              <OfficeRoom />
+            </Suspense>
+          </ErrorBoundary>
+        </div>
+
+        {/* ── Content Drafts ── */}
+        <div className="area-drafts">
+          <ErrorBoundary FallbackComponent={ErrorFallback}>
+            <Suspense fallback={<CardSkeleton />}>
+              <ContentDrafts />
+            </Suspense>
+          </ErrorBoundary>
+        </div>
+
+        {/* ── Proposal Queue ── */}
+        <div className="area-proposals">
+          <ErrorBoundary FallbackComponent={ErrorFallback}>
+            <Suspense fallback={<CardSkeleton />}>
+              <ProposalQueue />
+            </Suspense>
+          </ErrorBoundary>
+        </div>
+
+        {/* ── Agent Memory ── */}
+        <div className="area-memory">
+          <ErrorBoundary FallbackComponent={ErrorFallback}>
+            <Suspense fallback={<CardSkeleton />}>
+              <AgentMemory />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       </div>
-    </>
+    </div>
   );
 }

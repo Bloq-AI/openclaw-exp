@@ -195,7 +195,14 @@ async function checkHealthCheck(sb: SupabaseClient): Promise<CheckerResult> {
 
 // ── Checker map ─────────────────────────────────────────────────────
 
+async function checkGithubLinkedinScan(
+  _sb: SupabaseClient
+): Promise<CheckerResult> {
+  return { fired: true, payload: { org: "bloq-ai" } };
+}
+
 export const checkerMap: Record<string, CheckerFn> = {
+  github_linkedin_scan: checkGithubLinkedinScan,
   mission_failed: checkMissionFailed,
   tweet_high_engagement: checkTweetHighEngagement,
   step_failed_repeated: checkStepFailedRepeated,
