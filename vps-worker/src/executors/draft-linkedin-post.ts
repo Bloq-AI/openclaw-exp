@@ -51,7 +51,7 @@ export async function executeDraftLinkedinPost(
     try {
       const imageResponse = await withTimeout(
         ai.models.generateContent({
-          model: "gemini-2.0-flash-preview-image-generation",
+          model: "gemini-2.5-flash-image",
           contents: `Generate a modern, professional social media graphic for a LinkedIn post about an open-source AI project called "${repo.name}". The image should feel tech-forward, use dark tones with accent colors, and subtly reference code or AI. Do NOT include any text in the image.`,
           config: {
             responseModalities: ["TEXT", "IMAGE"],
