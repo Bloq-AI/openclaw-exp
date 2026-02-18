@@ -52,36 +52,9 @@ export async function GET(req: NextRequest) {
   const personUrn = `urn:li:person:${userInfo.sub}`;
   const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
 
-  // ── Fetch organizations this user admins ──
-  let orgUrn: string | null = null;
-  let orgName: string | null = null;
-  try {
-    const orgRes = await fetch(
-      "https://api.linkedin.com/v2/organizationAcls?q=roleAssignee&role=ADMINISTRATOR&state=APPROVED&count=10",
-      { headers: { Authorization: `Bearer ${tokenData.access_token}`, "X-Restli-Protocol-Version": "2.0.0" } }
-    );
-    if (orgRes.ok) {
-      const orgData = (await orgRes.json()) as {
-        elements?: Array<{ organization: string }>;
-      };
-      const firstOrg = orgData.elements?.[0]?.organization;
-      if (firstOrg) {
-        orgUrn = firstOrg; // e.g. "urn:li:organization:12345678"
-        // Fetch org name
-        const orgId = firstOrg.split(":").pop();
-        const nameRes = await fetch(
-          `https://api.linkedin.com/v2/organizations/${orgId}?projection=(localizedName)`,
-          { headers: { Authorization: `Bearer ${tokenData.access_token}` } }
-        );
-        if (nameRes.ok) {
-          const nameData = (await nameRes.json()) as { localizedName?: string };
-          orgName = nameData.localizedName ?? null;
-        }
-      }
-    }
-  } catch {
-    // Non-fatal — fall back to personal posting
-  }
+  // ── Org URN comes from env var (set LINKEDIN_ORG_ID to your company page numeric ID) ──
+  const orgId = process.env.LINKEDIN_ORG_ID;
+  const orgUrn = orgId ? `urn:li:organization:${orgId}` : null;
 
   // ── Persist in ops_policy ──
   await supabaseAdmin.from("ops_policy").upsert({
@@ -90,7 +63,6 @@ export async function GET(req: NextRequest) {
       access_token: tokenData.access_token,
       person_urn: personUrn,
       org_urn: orgUrn,
-      org_name: orgName,
       name: userInfo.name ?? null,
       expires_at: expiresAt,
     },

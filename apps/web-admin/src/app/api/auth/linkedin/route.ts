@@ -17,7 +17,7 @@ export async function GET() {
   }
 
   const redirectUri = `${baseUrl}/api/auth/linkedin/callback`;
-  const scope = "openid profile w_member_social w_organization_social r_organization_social";
+  const scope = "openid profile w_member_social";
 
   const url = new URL("https://www.linkedin.com/oauth/v2/authorization");
   url.searchParams.set("response_type", "code");
