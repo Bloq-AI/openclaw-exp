@@ -37,7 +37,7 @@ export async function executeDraftLinkedinPost(
     const textResponse = await withTimeout(
       ai.models.generateContent({
         model: "gemini-2.5-flash",
-        contents: `You are the social media voice for BLOQ AI. Write a compelling LinkedIn post promoting this open-source project.\n\nProject: ${repo.name}\nURL: ${repo.url}\nDescription: ${repo.description ?? "N/A"}\nStars: ${repo.stars}\nLanguage: ${repo.language ?? "N/A"}\nWhy it's interesting: ${reason ?? "N/A"}\nContent angle: ${angle ?? "N/A"}\n\nGuidelines:\n- Professional but energetic tone\n- Include the repo URL\n- Use 2-3 relevant hashtags\n- Keep it under 1300 characters\n- Start with a hook\n\nReturn only the post text.`,
+        contents: `You are the social media voice for BLOQ AI. Write a compelling LinkedIn post promoting this open-source project.\n\nProject: ${repo.name}\nDescription: ${repo.description ?? "N/A"}\nStars: ${repo.stars}\nLanguage: ${repo.language ?? "N/A"}\nWhy it's interesting: ${reason ?? "N/A"}\nContent angle: ${angle ?? "N/A"}\n\nGuidelines:\n- Professional but energetic tone\n- Do NOT include any GitHub or repository URLs\n- Use 2-3 relevant hashtags\n- Keep it under 1300 characters\n- Start with a hook\n\nReturn only the post text.`,
       }),
       60_000,
       "gemini post generation"

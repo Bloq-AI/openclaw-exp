@@ -83,6 +83,15 @@ export function ContentDrafts() {
   }, [editContent, editing]);
 
   async function updateStatus(id: string, status: "approved" | "dismissed") {
+    // If approving and LinkedIn is connected, post directly instead of just marking approved
+    if (status === "approved" && liStatus?.connected) {
+      const draft = drafts?.find((d) => d.id === id);
+      if (draft) {
+        await postToLinkedIn(draft);
+        return;
+      }
+    }
+
     const sb = getSupabaseBrowser();
     await sb
       .from("ops_content_drafts")
@@ -322,20 +331,12 @@ export function ContentDrafts() {
                           Edit
                         </button>
                       )}
-                      {liStatus?.connected && !isEditing && (
-                        <button
-                          className="draft-btn draft-btn-linkedin"
-                          disabled={isPosting}
-                          onClick={() => postToLinkedIn(d)}
-                        >
-                          {isPosting ? "Posting…" : "Post"}
-                        </button>
-                      )}
                       <button
-                        className="draft-btn draft-btn-approve"
+                        className={`draft-btn ${liStatus?.connected ? "draft-btn-linkedin" : "draft-btn-approve"}`}
+                        disabled={isPosting}
                         onClick={() => updateStatus(d.id, "approved")}
                       >
-                        Approve
+                        {isPosting ? "Posting…" : liStatus?.connected ? "Approve & Post" : "Approve"}
                       </button>
                       <button
                         className="draft-btn draft-btn-dismiss"
