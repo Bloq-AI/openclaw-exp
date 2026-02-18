@@ -198,6 +198,16 @@ async function checkHealthCheck(sb: SupabaseClient): Promise<CheckerResult> {
 async function checkGithubLinkedinScan(
   _sb: SupabaseClient
 ): Promise<CheckerResult> {
+  // Only fire between 09:45 and 10:45 UTC — the Vercel cron is the primary trigger
+  // at 10:00 UTC; this is a fallback in case it misses.
+  const hourUTC = new Date().getUTCHours();
+  const minUTC = new Date().getUTCMinutes();
+  const totalMin = hourUTC * 60 + minUTC;
+  const windowStart = 9 * 60 + 45;  // 09:45 UTC
+  const windowEnd   = 10 * 60 + 45; // 10:45 UTC
+  if (totalMin < windowStart || totalMin > windowEnd) {
+    return { fired: false };
+  }
   return { fired: true, payload: { org: "bloq-ai" } };
 }
 
