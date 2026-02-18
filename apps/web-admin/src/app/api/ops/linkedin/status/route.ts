@@ -16,12 +16,12 @@ export async function GET() {
     return NextResponse.json({ connected: false });
   }
 
-  const auth = data.json as { name?: string; expires_at?: string };
+  const auth = data.json as { name?: string; org_name?: string; expires_at?: string };
   const expired = auth.expires_at ? new Date(auth.expires_at) < new Date() : false;
 
   return NextResponse.json({
     connected: !expired,
-    name: auth.name ?? null,
+    name: auth.org_name ?? auth.name ?? null,
     expires_at: auth.expires_at ?? null,
     expired,
   });

@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-/**
- * GET /api/auth/linkedin/callback
- * LinkedIn redirects here after the operator authorises.
- * Exchanges the code for tokens, fetches the person sub, and stores
- * everything in ops_policy under the key "linkedin_auth".
- */
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
@@ -24,10 +18,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (!clientId || !clientSecret) {
-    return NextResponse.json(
-      { error: "LinkedIn credentials not configured" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "LinkedIn credentials not configured" }, { status: 500 });
   }
 
   // ── Exchange code for access token ──
@@ -48,23 +39,49 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "token exchange failed", detail: body }, { status: 502 });
   }
 
-  const tokenData = (await tokenRes.json()) as {
-    access_token: string;
-    expires_in: number;
-  };
+  const tokenData = (await tokenRes.json()) as { access_token: string; expires_in: number };
 
-  // ── Fetch person ID via OpenID Connect userinfo ──
+  // ── Fetch person identity ──
   const userRes = await fetch("https://api.linkedin.com/v2/userinfo", {
     headers: { Authorization: `Bearer ${tokenData.access_token}` },
   });
-
   if (!userRes.ok) {
     return NextResponse.json({ error: "userinfo fetch failed" }, { status: 502 });
   }
-
   const userInfo = (await userRes.json()) as { sub: string; name?: string };
   const personUrn = `urn:li:person:${userInfo.sub}`;
   const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
+
+  // ── Fetch organizations this user admins ──
+  let orgUrn: string | null = null;
+  let orgName: string | null = null;
+  try {
+    const orgRes = await fetch(
+      "https://api.linkedin.com/v2/organizationAcls?q=roleAssignee&role=ADMINISTRATOR&state=APPROVED&count=10",
+      { headers: { Authorization: `Bearer ${tokenData.access_token}`, "X-Restli-Protocol-Version": "2.0.0" } }
+    );
+    if (orgRes.ok) {
+      const orgData = (await orgRes.json()) as {
+        elements?: Array<{ organization: string }>;
+      };
+      const firstOrg = orgData.elements?.[0]?.organization;
+      if (firstOrg) {
+        orgUrn = firstOrg; // e.g. "urn:li:organization:12345678"
+        // Fetch org name
+        const orgId = firstOrg.split(":").pop();
+        const nameRes = await fetch(
+          `https://api.linkedin.com/v2/organizations/${orgId}?projection=(localizedName)`,
+          { headers: { Authorization: `Bearer ${tokenData.access_token}` } }
+        );
+        if (nameRes.ok) {
+          const nameData = (await nameRes.json()) as { localizedName?: string };
+          orgName = nameData.localizedName ?? null;
+        }
+      }
+    }
+  } catch {
+    // Non-fatal — fall back to personal posting
+  }
 
   // ── Persist in ops_policy ──
   await supabaseAdmin.from("ops_policy").upsert({
@@ -72,6 +89,8 @@ export async function GET(req: NextRequest) {
     json: {
       access_token: tokenData.access_token,
       person_urn: personUrn,
+      org_urn: orgUrn,
+      org_name: orgName,
       name: userInfo.name ?? null,
       expires_at: expiresAt,
     },

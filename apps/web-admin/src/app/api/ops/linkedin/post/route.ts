@@ -4,6 +4,8 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 interface LinkedInAuth {
   access_token: string;
   person_urn: string;
+  org_urn: string | null;
+  org_name: string | null;
   expires_at: string;
 }
 
@@ -51,14 +53,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Draft already posted" }, { status: 409 });
   }
 
-  const { access_token, person_urn } = auth;
+  const { access_token, person_urn, org_urn } = auth;
+  // Post as the organization if available, otherwise fall back to personal profile
+  const author = org_urn ?? person_urn;
 
   // ── Upload image if present ──
   let mediaAssetUrn: string | null = null;
 
   if (draft.image_url?.startsWith("data:")) {
     try {
-      mediaAssetUrn = await uploadImageToLinkedIn(access_token, person_urn, draft.image_url);
+      mediaAssetUrn = await uploadImageToLinkedIn(access_token, author, draft.image_url);
     } catch (err) {
       console.warn("[linkedin/post] image upload failed, posting text-only:", err);
     }
@@ -81,7 +85,7 @@ export async function POST(req: NextRequest) {
   };
 
   const ugcPost: UgcPost = {
-    author: person_urn,
+    author,
     lifecycleState: "PUBLISHED",
     specificContent: {
       "com.linkedin.ugc.ShareContent": {
