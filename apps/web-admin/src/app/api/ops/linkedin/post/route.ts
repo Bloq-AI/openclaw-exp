@@ -54,8 +54,9 @@ export async function POST(req: NextRequest) {
   }
 
   const { access_token, person_urn, org_urn } = auth;
-  // Post as the organization if available, otherwise fall back to personal profile
-  const author = org_urn ?? person_urn;
+  // Try org first, fall back to personal if org not set or fails
+  const preferredAuthor = org_urn ?? person_urn;
+  let author = preferredAuthor;
 
   // ── Upload image if present ──
   let mediaAssetUrn: string | null = null;
@@ -101,7 +102,7 @@ export async function POST(req: NextRequest) {
     },
   };
 
-  const postRes = await fetch("https://api.linkedin.com/v2/ugcPosts", {
+  let postRes = await fetch("https://api.linkedin.com/v2/ugcPosts", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${access_token}`,
@@ -110,6 +111,34 @@ export async function POST(req: NextRequest) {
     },
     body: JSON.stringify(ugcPost),
   });
+
+  // If org posting fails (needs w_organization_social), retry as personal profile
+  if (!postRes.ok && author !== person_urn) {
+    console.warn("[linkedin/post] org post failed, retrying as personal profile");
+    author = person_urn;
+    ugcPost.author = person_urn;
+    if (mediaAssetUrn) {
+      // Re-upload image under person URN
+      try {
+        mediaAssetUrn = await uploadImageToLinkedIn(access_token, person_urn, draft.image_url!);
+        ugcPost.specificContent["com.linkedin.ugc.ShareContent"].media = [
+          { status: "READY", media: mediaAssetUrn },
+        ];
+      } catch {
+        ugcPost.specificContent["com.linkedin.ugc.ShareContent"].media = undefined;
+        ugcPost.specificContent["com.linkedin.ugc.ShareContent"].shareMediaCategory = "NONE";
+      }
+    }
+    postRes = await fetch("https://api.linkedin.com/v2/ugcPosts", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+        "Content-Type": "application/json",
+        "X-Restli-Protocol-Version": "2.0.0",
+      },
+      body: JSON.stringify(ugcPost),
+    });
+  }
 
   if (!postRes.ok) {
     const detail = await postRes.text();
