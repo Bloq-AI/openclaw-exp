@@ -1169,6 +1169,49 @@
   opacity: 0.85;
 }
 
+.draft-post-meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.draft-posted-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(10, 102, 194, 0.15);
+  color: #60a4f4;
+  border: 1px solid rgba(10, 102, 194, 0.25);
+}
+
+.draft-approved-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--green-dim);
+  color: var(--green);
+  border: 1px solid rgba(74, 222, 128, 0.2);
+}
+
+.draft-dismissed-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--bg-raised);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+}
+
 /* LinkedIn connection badge in card header */
 .draft-header-right {
   display: flex;

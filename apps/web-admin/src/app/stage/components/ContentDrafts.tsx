@@ -12,6 +12,7 @@ interface Draft {
   status: string;
   created_at: string;
   posted_at: string | null;
+  reviewed_at: string | null;
 }
 
 interface LinkedInStatus {
@@ -20,8 +21,12 @@ interface LinkedInStatus {
   expired: boolean;
 }
 
+type Tab = "pending" | "history";
+
 export function ContentDrafts() {
+  const [tab, setTab] = useState<Tab>("pending");
   const [drafts, setDrafts] = useState<Draft[] | null>(null);
+  const [history, setHistory] = useState<Draft[] | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [editContent, setEditContent] = useState<Record<string, string>>({});
@@ -33,21 +38,33 @@ export function ContentDrafts() {
 
   useEffect(() => {
     const sb = getSupabaseBrowser();
-    async function load() {
+    async function loadPending() {
       const { data } = await sb
         .from("ops_content_drafts")
-        .select("id, platform, content, image_url, context, status, created_at, posted_at")
+        .select("id, platform, content, image_url, context, status, created_at, posted_at, reviewed_at")
         .eq("status", "pending")
         .order("created_at", { ascending: false })
         .limit(10);
-
       if (data) setDrafts(data as Draft[]);
     }
 
-    load();
-    const interval = setInterval(load, 15_000);
+    loadPending();
+    const interval = setInterval(loadPending, 15_000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (tab !== "history" || history !== null) return;
+    const sb = getSupabaseBrowser();
+    sb.from("ops_content_drafts")
+      .select("id, platform, content, image_url, context, status, created_at, posted_at, reviewed_at")
+      .in("status", ["approved", "dismissed"])
+      .order("reviewed_at", { ascending: false })
+      .limit(20)
+      .then(({ data }) => {
+        if (data) setHistory(data as Draft[]);
+      });
+  }, [tab, history]);
 
   // Load LinkedIn connection status
   useEffect(() => {
@@ -73,6 +90,8 @@ export function ContentDrafts() {
       .eq("id", id);
 
     setDrafts((prev) => (prev ? prev.filter((d) => d.id !== id) : prev));
+    // invalidate history cache so it reloads next time
+    setHistory(null);
     if (expanded === id) setExpanded(null);
     if (editing === id) setEditing(null);
   }
@@ -119,8 +138,8 @@ export function ContentDrafts() {
       if (!res.ok || !json.ok) {
         setPostError((prev) => ({ ...prev, [d.id]: json.error ?? "Post failed" }));
       } else {
-        // Remove from list — it's now posted (status → approved)
         setDrafts((prev) => (prev ? prev.filter((x) => x.id !== d.id) : prev));
+        setHistory(null);
         if (expanded === d.id) setExpanded(null);
       }
     } catch {
@@ -129,6 +148,8 @@ export function ContentDrafts() {
       setPosting(null);
     }
   }
+
+  const visibleDrafts = tab === "pending" ? drafts : history;
 
   return (
     <div className="card">
@@ -155,26 +176,57 @@ export function ContentDrafts() {
           )}
         </div>
       </div>
+
+      {/* Tabs */}
+      <div className="tabs">
+        <button
+          className={`tab ${tab === "pending" ? "active" : ""}`}
+          onClick={() => setTab("pending")}
+        >
+          Queue
+        </button>
+        <button
+          className={`tab ${tab === "history" ? "active" : ""}`}
+          onClick={() => setTab("history")}
+        >
+          History
+        </button>
+      </div>
+
       <div className="card-body" style={{ maxHeight: 480 }}>
-        {drafts === null ? (
+        {visibleDrafts === null ? (
           <div className="card-empty">Loading...</div>
-        ) : drafts.length === 0 ? (
-          <div className="card-empty">No pending drafts</div>
+        ) : visibleDrafts.length === 0 ? (
+          <div className="card-empty">
+            {tab === "pending" ? "No pending drafts" : "No approved or dismissed drafts yet"}
+          </div>
         ) : (
-          drafts.map((d) => {
+          visibleDrafts.map((d) => {
             const repo = d.context?.repo as
               | { name: string; url: string; stars: number }
               | undefined;
             const isExpanded = expanded === d.id;
             const isEditing = editing === d.id;
             const isPosting = posting === d.id;
+            const isPending = tab === "pending";
             const currentContent = isEditing ? (editContent[d.id] ?? d.content) : d.content;
 
             return (
               <div key={d.id} className="draft-row">
                 {/* Header */}
                 <div className="draft-top">
-                  <span className="draft-platform">{d.platform}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span className="draft-platform">{d.platform}</span>
+                    {d.posted_at && (
+                      <span className="draft-posted-badge">posted</span>
+                    )}
+                    {!d.posted_at && d.status === "approved" && (
+                      <span className="draft-approved-badge">approved</span>
+                    )}
+                    {d.status === "dismissed" && (
+                      <span className="draft-dismissed-badge">dismissed</span>
+                    )}
+                  </div>
                   <span className="draft-time">
                     {new Date(d.created_at).toLocaleString([], {
                       month: "short",
@@ -191,7 +243,7 @@ export function ContentDrafts() {
                   </div>
                 )}
 
-                {/* Content — textarea when editing, text when not */}
+                {/* Content */}
                 {isEditing ? (
                   <textarea
                     ref={textareaRef}
@@ -210,7 +262,7 @@ export function ContentDrafts() {
                   </div>
                 )}
 
-                {/* Image — full size when expanded */}
+                {/* Image */}
                 {isExpanded && (
                   <div className="draft-image-wrap">
                     {d.image_url && !imgError[d.id] ? (
@@ -225,10 +277,18 @@ export function ContentDrafts() {
                         }
                       />
                     ) : (
-                      <div className="draft-image-placeholder">
-                        No image generated
-                      </div>
+                      <div className="draft-image-placeholder">No image generated</div>
                     )}
+                  </div>
+                )}
+
+                {/* Posted metadata */}
+                {isExpanded && d.posted_at && (
+                  <div className="draft-post-meta">
+                    Posted {new Date(d.posted_at).toLocaleString([], {
+                      month: "short", day: "numeric",
+                      hour: "2-digit", minute: "2-digit",
+                    })}
                   </div>
                 )}
 
@@ -239,58 +299,52 @@ export function ContentDrafts() {
 
                 {/* Actions */}
                 <div className="draft-actions">
-                  {isEditing ? (
+                  <button
+                    className="draft-btn draft-btn-expand"
+                    onClick={() => setExpanded(isExpanded ? null : d.id)}
+                  >
+                    {isExpanded ? "Collapse" : "Expand"}
+                  </button>
+
+                  {isPending && (
                     <>
+                      {isEditing ? (
+                        <>
+                          <button className="draft-btn draft-btn-save" onClick={() => saveEdit(d.id)}>
+                            Save
+                          </button>
+                          <button className="draft-btn draft-btn-expand" onClick={() => cancelEdit(d.id)}>
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <button className="draft-btn draft-btn-edit" onClick={() => startEdit(d)}>
+                          Edit
+                        </button>
+                      )}
+                      {liStatus?.connected && !isEditing && (
+                        <button
+                          className="draft-btn draft-btn-linkedin"
+                          disabled={isPosting}
+                          onClick={() => postToLinkedIn(d)}
+                        >
+                          {isPosting ? "Posting…" : "Post"}
+                        </button>
+                      )}
                       <button
-                        className="draft-btn draft-btn-save"
-                        onClick={() => saveEdit(d.id)}
+                        className="draft-btn draft-btn-approve"
+                        onClick={() => updateStatus(d.id, "approved")}
                       >
-                        Save
+                        Approve
                       </button>
                       <button
-                        className="draft-btn draft-btn-expand"
-                        onClick={() => cancelEdit(d.id)}
+                        className="draft-btn draft-btn-dismiss"
+                        onClick={() => updateStatus(d.id, "dismissed")}
                       >
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        className="draft-btn draft-btn-expand"
-                        onClick={() => setExpanded(isExpanded ? null : d.id)}
-                      >
-                        {isExpanded ? "Collapse" : "Expand"}
-                      </button>
-                      <button
-                        className="draft-btn draft-btn-edit"
-                        onClick={() => startEdit(d)}
-                      >
-                        Edit
+                        Dismiss
                       </button>
                     </>
                   )}
-                  {liStatus?.connected && !isEditing && (
-                    <button
-                      className="draft-btn draft-btn-linkedin"
-                      disabled={isPosting}
-                      onClick={() => postToLinkedIn(d)}
-                    >
-                      {isPosting ? "Posting…" : "Post"}
-                    </button>
-                  )}
-                  <button
-                    className="draft-btn draft-btn-approve"
-                    onClick={() => updateStatus(d.id, "approved")}
-                  >
-                    Approve
-                  </button>
-                  <button
-                    className="draft-btn draft-btn-dismiss"
-                    onClick={() => updateStatus(d.id, "dismissed")}
-                  >
-                    Dismiss
-                  </button>
                 </div>
               </div>
             );
