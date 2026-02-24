@@ -9,6 +9,8 @@ import { MissionPlayback } from "./components/MissionPlayback";
 import { OfficeRoom } from "./components/OfficeRoom";
 import { ProposalQueue } from "./components/ProposalQueue";
 import { ContentDrafts } from "./components/ContentDrafts";
+import { ContentPosts } from "./components/ContentPosts";
+import { PersonaEvolution } from "./components/PersonaEvolution";
 import { AgentMemory } from "./components/AgentMemory";
 import { ErrorFallback } from "./components/ErrorFallback";
 import { CardSkeleton } from "./components/Skeletons";
@@ -70,11 +72,29 @@ export default function StagePage() {
           </ErrorBoundary>
         </div>
 
+        {/* ── Content Posts (Performance) ── */}
+        <div className="area-posts">
+          <ErrorBoundary FallbackComponent={ErrorFallback}>
+            <Suspense fallback={<CardSkeleton />}>
+              <ContentPosts />
+            </Suspense>
+          </ErrorBoundary>
+        </div>
+
         {/* ── Proposal Queue ── */}
         <div className="area-proposals">
           <ErrorBoundary FallbackComponent={ErrorFallback}>
             <Suspense fallback={<CardSkeleton />}>
               <ProposalQueue />
+            </Suspense>
+          </ErrorBoundary>
+        </div>
+
+        {/* ── Persona Evolution ── */}
+        <div className="area-evolution">
+          <ErrorBoundary FallbackComponent={ErrorFallback}>
+            <Suspense fallback={<CardSkeleton />}>
+              <PersonaEvolution />
             </Suspense>
           </ErrorBoundary>
         </div>

@@ -19,6 +19,8 @@ interface LinkedInStatus {
   connected: boolean;
   name: string | null;
   expired: boolean;
+  org_token_connected: boolean;
+  org_token_expired: boolean;
 }
 
 type Tab = "pending" | "history";
@@ -31,6 +33,9 @@ export function ContentDrafts() {
   const [editing, setEditing] = useState<string | null>(null);
   const [editContent, setEditContent] = useState<Record<string, string>>({});
   const [imgError, setImgError] = useState<Record<string, boolean>>({});
+  const [imgFeedback, setImgFeedback] = useState<Record<string, number | null>>({});
+  const [imgFeedbackNote, setImgFeedbackNote] = useState<Record<string, string>>({});
+  const [imgFeedbackSent, setImgFeedbackSent] = useState<Record<string, boolean>>({});
   const [posting, setPosting] = useState<string | null>(null);
   const [postError, setPostError] = useState<Record<string, string>>({});
   const [liStatus, setLiStatus] = useState<LinkedInStatus | null>(null);
@@ -83,8 +88,8 @@ export function ContentDrafts() {
   }, [editContent, editing]);
 
   async function updateStatus(id: string, status: "approved" | "dismissed") {
-    // If approving and LinkedIn is connected, post directly instead of just marking approved
-    if (status === "approved" && liStatus?.connected) {
+    // If approving and any LinkedIn token is connected, post directly instead of just marking approved
+    if (status === "approved" && (liStatus?.org_token_connected || liStatus?.connected)) {
       const draft = drafts?.find((d) => d.id === id);
       if (draft) {
         await postToLinkedIn(draft);
@@ -131,6 +136,26 @@ export function ContentDrafts() {
     setEditing(null);
   }
 
+  async function submitImageFeedback(d: Draft, rating: number) {
+    if (!d.image_url || imgFeedbackSent[d.id]) return;
+    setImgFeedback((prev) => ({ ...prev, [d.id]: rating }));
+
+    await fetch("/api/ops/image-feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        image_url: d.image_url,
+        rating,
+        feedback_text: imgFeedbackNote[d.id] || undefined,
+        draft_id: d.id,
+        brand: "bloq",
+        platform: d.platform === "x" ? "twitter" : d.platform,
+      }),
+    });
+
+    setImgFeedbackSent((prev) => ({ ...prev, [d.id]: true }));
+  }
+
   async function postToLinkedIn(d: Draft) {
     setPosting(d.id);
     setPostError((prev) => ({ ...prev, [d.id]: "" }));
@@ -170,18 +195,34 @@ export function ContentDrafts() {
         <div className="draft-header-right">
           <span className="card-badge">{drafts?.length ?? 0}</span>
           {liStatus !== null && (
-            <a
-              href={liStatus.connected ? undefined : "/api/auth/linkedin"}
-              className={`li-status ${liStatus.connected ? "li-status-on" : "li-status-off"}`}
-              title={
-                liStatus.connected
-                  ? `LinkedIn: ${liStatus.name ?? "connected"}`
-                  : "Click to connect LinkedIn"
-              }
-            >
-              <span className="li-icon">in</span>
-              {liStatus.connected ? liStatus.name ?? "Connected" : "Connect"}
-            </a>
+            <>
+              {/* Personal LinkedIn account */}
+              <a
+                href={liStatus.connected ? undefined : "/api/auth/linkedin"}
+                className={`li-status ${liStatus.connected ? "li-status-on" : "li-status-off"}`}
+                title={
+                  liStatus.connected
+                    ? `Personal: ${liStatus.name ?? "connected"}`
+                    : "Click to connect personal LinkedIn"
+                }
+              >
+                <span className="li-icon">in</span>
+                {liStatus.connected ? liStatus.name ?? "Personal" : "Connect Personal"}
+              </a>
+              {/* Org LinkedIn account (Community Management API) */}
+              <a
+                href={liStatus.org_token_connected ? undefined : "/api/auth/linkedin-org"}
+                className={`li-status ${liStatus.org_token_connected ? "li-status-on li-status-org" : "li-status-off"}`}
+                title={
+                  liStatus.org_token_connected
+                    ? "BLOQ AI page connected"
+                    : "Click to connect BLOQ AI page (requires new LinkedIn app with Community Management API)"
+                }
+              >
+                <span className="li-icon">in</span>
+                {liStatus.org_token_connected ? "BLOQ AI" : "Connect BLOQ AI Page"}
+              </a>
+            </>
           )}
         </div>
       </div>
@@ -271,20 +312,62 @@ export function ContentDrafts() {
                   </div>
                 )}
 
-                {/* Image */}
+                {/* Image + feedback */}
                 {isExpanded && (
                   <div className="draft-image-wrap">
                     {d.image_url && !imgError[d.id] ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={d.image_url}
-                        alt="Generated visual"
-                        className="draft-image"
-                        loading="lazy"
-                        onError={() =>
-                          setImgError((prev) => ({ ...prev, [d.id]: true }))
-                        }
-                      />
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={d.image_url}
+                          alt="Generated visual"
+                          className="draft-image"
+                          loading="lazy"
+                          onError={() =>
+                            setImgError((prev) => ({ ...prev, [d.id]: true }))
+                          }
+                        />
+                        {/* Image feedback */}
+                        <div className="img-feedback">
+                          {imgFeedbackSent[d.id] ? (
+                            <span className="img-feedback-sent">
+                              Feedback saved — helps evolve image prompts
+                            </span>
+                          ) : (
+                            <>
+                              <span className="img-feedback-label">Rate image:</span>
+                              {[1, 2, 3, 4, 5].map((r) => (
+                                <button
+                                  key={r}
+                                  className={`img-feedback-star ${imgFeedback[d.id] === r ? "selected" : ""}`}
+                                  onClick={() => setImgFeedback((prev) => ({ ...prev, [d.id]: r }))}
+                                  title={["Terrible", "Bad", "Okay", "Good", "Great"][r - 1]}
+                                >
+                                  ★
+                                </button>
+                              ))}
+                              {imgFeedback[d.id] !== null && imgFeedback[d.id] !== undefined && (
+                                <>
+                                  <input
+                                    className="img-feedback-note"
+                                    placeholder="What's wrong / what worked? (optional)"
+                                    value={imgFeedbackNote[d.id] ?? ""}
+                                    onChange={(e) =>
+                                      setImgFeedbackNote((prev) => ({ ...prev, [d.id]: e.target.value }))
+                                    }
+                                  />
+                                  <button
+                                    className="img-feedback-submit"
+                                    onClick={() => submitImageFeedback(d, imgFeedback[d.id]!)}
+                                  >
+                                    Submit
+                                  </button>
+                                </>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </>
                     ) : (
                       <div className="draft-image-placeholder">No image generated</div>
                     )}
@@ -332,11 +415,17 @@ export function ContentDrafts() {
                         </button>
                       )}
                       <button
-                        className={`draft-btn ${liStatus?.connected ? "draft-btn-linkedin" : "draft-btn-approve"}`}
+                        className={`draft-btn ${(liStatus?.org_token_connected || liStatus?.connected) ? "draft-btn-linkedin" : "draft-btn-approve"}`}
                         disabled={isPosting}
                         onClick={() => updateStatus(d.id, "approved")}
                       >
-                        {isPosting ? "Posting…" : liStatus?.connected ? "Approve & Post" : "Approve"}
+                        {isPosting
+                          ? "Posting…"
+                          : liStatus?.org_token_connected
+                            ? "Approve & Post to BLOQ AI"
+                            : liStatus?.connected
+                              ? "Approve & Post"
+                              : "Approve"}
                       </button>
                       <button
                         className="draft-btn draft-btn-dismiss"

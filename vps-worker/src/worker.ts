@@ -48,8 +48,11 @@ function jitterSleep(): Promise<void> {
 }
 
 async function claimStep() {
+  const kinds = Object.keys(executors);
+  console.log("[worker] claiming with p_kinds:", kinds);
   const { data, error } = await sb.rpc("claim_next_step", {
     p_worker_id: WORKER_ID,
+    p_kinds: kinds,
   });
 
   if (error) {

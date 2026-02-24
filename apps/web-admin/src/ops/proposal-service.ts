@@ -122,6 +122,7 @@ export async function createProposalAndMaybeAutoApprove(
     kind,
     status: (i === 0 ? "queued" : "pending") as string,
     payload: input.payload ?? {},
+    order_index: i,
   }));
 
   const { error: stepsError } = await sb.from("ops_mission_steps").insert(steps);

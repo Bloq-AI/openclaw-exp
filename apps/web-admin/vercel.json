@@ -3,6 +3,26 @@
     {
       "path": "/api/cron/daily-linkedin",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/daily-twitter",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/daily-twitter",
+      "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/daily-twitter",
+      "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-linkedin-promote",
+      "schedule": "0 8 * * 1"
+    },
+    {
+      "path": "/api/cron/weekly-evolve",
+      "schedule": "0 7 * * 0"
     }
   ]
 }

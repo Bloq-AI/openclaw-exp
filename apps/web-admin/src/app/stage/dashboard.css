@@ -28,12 +28,14 @@
   margin: 0 auto;
   display: grid;
   grid-template-columns: 320px 1fr 340px;
-  grid-template-rows: auto auto 1fr auto auto;
+  grid-template-rows: auto auto 1fr auto auto auto auto;
   grid-template-areas:
-    "header  header   header"
-    "feed    missions office"
-    "feed    playback office"
-    "feed    drafts   office"
+    "header  header    header"
+    "feed    missions  office"
+    "feed    playback  office"
+    "feed    drafts    office"
+    "feed    posts     office"
+    "feed    evolution office"
     "feed    proposals memory";
   gap: 14px;
 }
@@ -42,12 +44,14 @@
   .dash-grid {
     grid-template-columns: 1fr 1fr;
     grid-template-areas:
-      "header   header"
-      "feed     missions"
-      "feed     playback"
-      "drafts   drafts"
-      "office   proposals"
-      "memory   memory";
+      "header    header"
+      "feed      missions"
+      "feed      playback"
+      "drafts    drafts"
+      "posts     posts"
+      "evolution evolution"
+      "office    proposals"
+      "memory    memory";
   }
 }
 
@@ -60,6 +64,8 @@
       "missions"
       "playback"
       "drafts"
+      "posts"
+      "evolution"
       "office"
       "proposals"
       "memory";
@@ -72,7 +78,9 @@
 .area-playback  { grid-area: playback; }
 .area-office    { grid-area: office; }
 .area-drafts    { grid-area: drafts; }
-.area-proposals { grid-area: proposals; }
+.area-posts      { grid-area: posts; }
+.area-evolution  { grid-area: evolution; }
+.area-proposals  { grid-area: proposals; }
 .area-memory    { grid-area: memory; }
 
 /* ── Card ───────────────────────────────────────────────────────── */
@@ -1212,7 +1220,358 @@
   border: 1px solid var(--border-subtle);
 }
 
-/* LinkedIn connection badge in card header */
+/* ── Image Feedback ────────────────────────────────────────────── */
+.img-feedback {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.img-feedback-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.img-feedback-star {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-muted);
+  padding: 0 1px;
+  transition: color 0.1s, transform 0.1s;
+  line-height: 1;
+}
+
+.img-feedback-star:hover,
+.img-feedback-star.selected {
+  color: var(--amber);
+  transform: scale(1.2);
+}
+
+.img-feedback-note {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 3px 8px;
+  outline: none;
+  flex: 1;
+  min-width: 160px;
+}
+
+.img-feedback-note:focus {
+  border-color: var(--amber);
+}
+
+.img-feedback-submit {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--amber-dim);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  color: var(--amber);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.img-feedback-submit:hover {
+  background: rgba(251, 191, 36, 0.2);
+}
+
+.img-feedback-sent {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--green);
+  opacity: 0.8;
+}
+
+/* ── Persona Evolution Panel ────────────────────────────────────── */
+.persona-feedback-bar {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.persona-feedback-stat {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  flex: 1;
+}
+
+.persona-evolve-btn {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.persona-evolve-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--border-active);
+}
+
+.persona-evolve-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.persona-evolve-btn-primary {
+  background: var(--green-dim);
+  border-color: rgba(74, 222, 128, 0.2);
+  color: var(--green);
+}
+
+.persona-evolve-btn-primary:hover:not(:disabled) {
+  background: rgba(74, 222, 128, 0.2);
+  color: var(--green);
+}
+
+.persona-evolve-msg {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--green);
+  width: 100%;
+}
+
+.persona-section-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  padding: 8px 16px 4px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.persona-version-row {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.15s;
+}
+
+.persona-version-row:hover {
+  background: var(--bg-raised);
+}
+
+.persona-version-row.archived {
+  opacity: 0.5;
+}
+
+.persona-version-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.persona-field-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--purple-dim);
+  color: var(--purple);
+  border: 1px solid rgba(167, 139, 250, 0.2);
+}
+
+.persona-platform {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.persona-active-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 4px var(--green);
+}
+
+.persona-creator {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+.persona-reason {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: 4px;
+  font-style: italic;
+}
+
+.persona-value-box {
+  margin-top: 6px;
+  padding: 8px 10px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+/* ── Content Posts (Performance Panel) ─────────────────────────── */
+.content-post-row {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.15s;
+}
+
+.content-post-row:hover {
+  background: var(--bg-raised);
+}
+
+.content-post-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.content-post-brand {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.content-post-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+
+.content-post-metrics {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.metric-item {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.metric-icon {
+  font-size: 9px;
+  opacity: 0.7;
+}
+
+.metric-score {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.confidence-fill[data-level="high"]   { background: var(--green); }
+.confidence-fill[data-level="medium"] { background: var(--amber); }
+.confidence-fill[data-level="low"]    { background: var(--red); }
+
+.content-post-tracking {
+  margin-top: 4px;
+}
+
+.metric-pending {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.content-post-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.badge-promoted {
+  background: var(--blue-dim);
+  color: var(--blue);
+  border: 1px solid rgba(96, 165, 250, 0.2);
+}
+
+.badge-draft {
+  background: var(--bg-raised);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+}
+
+.platform-twitter {
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  font-weight: 700;
+  font-size: 10px;
+}
+
+.platform-linkedin {
+  background: rgba(10, 102, 194, 0.15);
+  color: #60a4f4;
+  border: 1px solid rgba(10, 102, 194, 0.25);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 10px;
+}
+
+.content-post-link {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  text-decoration: none;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.content-post-link:hover {
+  opacity: 1;
+  color: var(--blue);
+}
+
+/* ── LinkedIn connection badge in card header ────────────────────── */
 .draft-header-right {
   display: flex;
   align-items: center;
@@ -1249,6 +1608,12 @@
 .li-status-off:hover {
   border-color: rgba(10, 102, 194, 0.4);
   color: #60a4f4;
+}
+
+/* Org (BLOQ AI) token connected — slightly different tint to distinguish from personal */
+.li-status-on.li-status-org {
+  background: rgba(10, 102, 194, 0.25);
+  border-color: rgba(10, 102, 194, 0.5);
 }
 
 .li-icon {

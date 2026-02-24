@@ -23,18 +23,25 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Load LinkedIn credentials from ops_policy ──
-  const { data: policy } = await supabaseAdmin
-    .from("ops_policy")
-    .select("json")
-    .eq("key", "linkedin_auth")
-    .single();
+  // Prefer dedicated org token (Community Management API app) for org posting,
+  // fall back to personal token.
+  const [{ data: orgPolicy }, { data: policy }] = await Promise.all([
+    supabaseAdmin.from("ops_policy").select("json").eq("key", "linkedin_org_auth").single(),
+    supabaseAdmin.from("ops_policy").select("json").eq("key", "linkedin_auth").single(),
+  ]);
 
-  if (!policy?.json) {
+  if (!policy?.json && !orgPolicy?.json) {
     return NextResponse.json({ error: "LinkedIn account not connected" }, { status: 401 });
   }
 
-  const auth = policy.json as LinkedInAuth;
-  if (new Date(auth.expires_at) < new Date()) {
+  // Use org token if available and not expired
+  const orgAuth = orgPolicy?.json as { access_token: string; org_urn: string; expires_at: string } | null;
+  const hasValidOrgToken = orgAuth && new Date(orgAuth.expires_at) >= new Date();
+
+  const auth = policy?.json as LinkedInAuth | null;
+  const hasValidPersonToken = auth && new Date(auth.expires_at) >= new Date();
+
+  if (!hasValidOrgToken && !hasValidPersonToken) {
     return NextResponse.json({ error: "LinkedIn token expired — reconnect account" }, { status: 401 });
   }
 
@@ -53,10 +60,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Draft already posted" }, { status: 409 });
   }
 
-  const { access_token, person_urn, org_urn } = auth;
-  // Try org first, fall back to personal if org not set or fails
-  const preferredAuthor = org_urn ?? person_urn;
-  let author = preferredAuthor;
+  // Org token → post as BLOQ AI org. Personal token → post as person.
+  const access_token = hasValidOrgToken ? orgAuth!.access_token : auth!.access_token;
+  const org_urn = hasValidOrgToken ? orgAuth!.org_urn : (auth?.org_urn ?? null);
+  const person_urn = auth?.person_urn ?? "";
+  const author = org_urn ?? person_urn;
 
   // ── Upload image if present ──
   let mediaAssetUrn: string | null = null;
@@ -102,7 +110,7 @@ export async function POST(req: NextRequest) {
     },
   };
 
-  let postRes = await fetch("https://api.linkedin.com/v2/ugcPosts", {
+  const postRes = await fetch("https://api.linkedin.com/v2/ugcPosts", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${access_token}`,
@@ -112,36 +120,18 @@ export async function POST(req: NextRequest) {
     body: JSON.stringify(ugcPost),
   });
 
-  // If org posting fails (needs w_organization_social), retry as personal profile
-  if (!postRes.ok && author !== person_urn) {
-    console.warn("[linkedin/post] org post failed, retrying as personal profile");
-    author = person_urn;
-    ugcPost.author = person_urn;
-    if (mediaAssetUrn) {
-      // Re-upload image under person URN
-      try {
-        mediaAssetUrn = await uploadImageToLinkedIn(access_token, person_urn, draft.image_url!);
-        ugcPost.specificContent["com.linkedin.ugc.ShareContent"].media = [
-          { status: "READY", media: mediaAssetUrn },
-        ];
-      } catch {
-        ugcPost.specificContent["com.linkedin.ugc.ShareContent"].media = undefined;
-        ugcPost.specificContent["com.linkedin.ugc.ShareContent"].shareMediaCategory = "NONE";
-      }
-    }
-    postRes = await fetch("https://api.linkedin.com/v2/ugcPosts", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${access_token}`,
-        "Content-Type": "application/json",
-        "X-Restli-Protocol-Version": "2.0.0",
-      },
-      body: JSON.stringify(ugcPost),
-    });
-  }
-
   if (!postRes.ok) {
     const detail = await postRes.text();
+    console.error("[linkedin/post] LinkedIn API error", { status: postRes.status, author, detail });
+    // org posting requires w_organization_social (Community Management API app)
+    if (author.includes("organization")) {
+      return NextResponse.json({
+        error: hasValidOrgToken
+          ? "LinkedIn org post rejected. Make sure your BLOQ AI Ops org app has Community Management API and the authorized user is a page admin."
+          : "To post as BLOQ AI, connect the org account first: go to /api/auth/linkedin-org",
+        detail,
+      }, { status: 403 });
+    }
     return NextResponse.json({ error: "LinkedIn API error", detail }, { status: 502 });
   }
 
